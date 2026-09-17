@@ -1,4 +1,17 @@
 # This workflow regenerates code using smithy-dafny and checks that the output matches what's checked in.
+#
+# It regenerates starting from TestVectorsAwsCryptographicMaterialProviders only, rather
+# than looping over every library. TestVectorsAwsCryptographicMaterialProviders's
+# dependency closure (PROJECT_DEPENDENCIES + STD_LIBRARY in its Makefile) already covers
+# every other library here, because polymorph_dafny/polymorph_java/etc. each recurse
+# into their dependencies via _polymorph_dependencies
+# (smithy-dafny/SmithyDafnyMakefile.mk) and write into that dependency's own directory.
+# Looping the matrix over all six libraries used to regenerate StandardLibrary's code up
+# to 6 times and each leaf library's code up to 3 times per run, all but one of which was
+# never even diffed (check_polymorph_diff only ever diffed the single matrix entry's own
+# directory) - pure wasted Smithy-Dafny codegen-cli invocations. Regenerating once and
+# diffing every library's directory afterward gets the same coverage for a fraction of
+# the compute.
 name: Library Code Generation
 on:
   workflow_call:
@@ -16,15 +29,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        library:
-          [
-            TestVectorsAwsCryptographicMaterialProviders,
-            AwsCryptographyPrimitives,
-            ComAmazonawsKms,
-            ComAmazonawsDynamodb,
-            AwsCryptographicMaterialProviders,
-            StandardLibrary,
-          ]
         # Note dotnet is only used for formatting generated code
         # in this workflow
         dotnet-version: ["6.0.x"]
@@ -82,5 +86,28 @@ jobs:
       - uses: ./.github/actions/polymorph_codegen
         with:
           dafny: ${{ env.DAFNY_VERSION }}
-          library: ${{ matrix.library }}
-          diff-generated-code: true
+          library: TestVectorsAwsCryptographicMaterialProviders
+          diff-generated-code: false
+
+      - name: Check regenerated code against committed code
+        run: |
+          dirty=()
+          for lib in \
+            StandardLibrary \
+            AwsCryptographyPrimitives \
+            ComAmazonawsKms \
+            ComAmazonawsDynamodb \
+            AwsCryptographicMaterialProviders \
+            TestVectorsAwsCryptographicMaterialProviders; do
+            echo "::group::Checking $lib"
+            if ! git diff --exit-code -- "$lib"; then
+              echo "ERROR: $lib has polymorph-generated code that does not match the committed code - see diff above."
+              dirty+=("$lib")
+            fi
+            echo "::endgroup::"
+          done
+          if [ "${#dirty[@]}" -ne 0 ]; then
+            echo "The following libraries have out-of-date generated code: ${dirty[*]}"
+            echo "Either commit the changes or regenerate with 'POLYMORPH_OPTIONS=--update-patch-files'."
+            exit 1
+          fi
