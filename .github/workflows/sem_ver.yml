@@ -20,6 +20,7 @@ jobs:
 
       # We need access to the role that is able to get CI Bot Creds
       - name: Configure AWS Credentials for Release
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: us-west-2
@@ -28,12 +29,14 @@ jobs:
           special-characters-workaround: "true" # Some environments (example: windowsOS) cannot tolerate special characters in a secret key.
 
       - name: Upgrade Node
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         uses: actions/setup-node@v6
         with:
           node-version: 20
 
       # Use AWS Secrets Manger GHA to retrieve CI Bot Creds
       - name: Get CI Bot Creds Secret
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         uses: aws-actions/aws-secretsmanager-get-secrets@v2
         with:
           secret-ids: Github/aws-crypto-tools-ci-bot
@@ -41,6 +44,7 @@ jobs:
 
       # Log in as the CI Bot
       - name: Log in as CI Bot
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         run: |
           echo ${{env.GITHUB_AWS_CRYPTO_TOOLS_CI_BOT_ESDK_RELEASE_TOKEN}} > token.txt
           gh auth login --with-token < token.txt
@@ -49,8 +53,10 @@ jobs:
 
       # Test to see if we can setup semantic release
       - name: Test Semantic Release Installation
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         uses: actions/checkout@v6
         with:
           ref: main
-      - run: |
+      - if: github.repository == 'aws/aws-cryptographic-material-providers-library'
+        run: |
           make setup_semantic_release
