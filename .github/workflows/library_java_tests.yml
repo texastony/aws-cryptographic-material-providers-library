@@ -50,7 +50,7 @@ jobs:
 
       - name: Configure AWS Credentials for Tests
         uses: aws-actions/configure-aws-credentials@v6
-        if: matrix.library == 'ComAmazonawsKms' || matrix.library == 'ComAmazonawsDynamodb' || matrix.library == 'AwsCryptographicMaterialProviders' || matrix.library == 'TestVectorsAwsCryptographicMaterialProviders'
+        if: (matrix.library == 'ComAmazonawsKms' || matrix.library == 'ComAmazonawsDynamodb' || matrix.library == 'AwsCryptographicMaterialProviders' || matrix.library == 'TestVectorsAwsCryptographicMaterialProviders') && github.repository == 'aws/aws-cryptographic-material-providers-library'
         with:
           aws-region: us-west-2
           role-to-assume: arn:aws:iam::370957321024:role/GitHub-CI-MPL-Dafny-Role-us-west-2
@@ -89,6 +89,7 @@ jobs:
           java-version: ${{ matrix.java-versions }}
 
       - name: Test ${{ matrix.library }} on ${{ matrix.java-versions }}
+        if: "!(matrix.library == 'ComAmazonawsKms' || matrix.library == 'ComAmazonawsDynamodb' || matrix.library == 'AwsCryptographicMaterialProviders') || github.repository == 'aws/aws-cryptographic-material-providers-library'"
         working-directory: ./${{ matrix.library }}/runtimes/java
         run: |
           ./gradlew runTests

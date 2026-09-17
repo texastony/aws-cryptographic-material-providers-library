@@ -39,6 +39,7 @@ jobs:
           git submodule update --init --recursive smithy-dafny
 
       - name: Configure AWS Credentials
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: us-west-2

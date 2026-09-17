@@ -56,6 +56,7 @@ jobs:
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v6
+        if: (matrix.library == 'ComAmazonawsKms' || matrix.library == 'ComAmazonawsDynamodb' || matrix.library == 'AwsCryptographicMaterialProviders' || matrix.library == 'TestVectorsAwsCryptographicMaterialProviders') && github.repository == 'aws/aws-cryptographic-material-providers-library'
         with:
           aws-region: us-west-2
           role-to-assume: arn:aws:iam::370957321024:role/GitHub-CI-MPL-Dafny-Role-us-west-2
@@ -80,13 +81,14 @@ jobs:
           path: .
 
       - name: Test ${{ matrix.library }}
+        if: "!(matrix.library == 'ComAmazonawsKms' || matrix.library == 'ComAmazonawsDynamodb' || matrix.library == 'AwsCryptographicMaterialProviders' || matrix.library == 'TestVectorsAwsCryptographicMaterialProviders') || github.repository == 'aws/aws-cryptographic-material-providers-library'"
         working-directory: ./${{ matrix.library }}
         run: |
           make test_go
 
       # This is only to test AwsCryptographicMaterialProviders which has local cmc test inside it.
       - name: Test local CMC
-        if: matrix.library == 'AwsCryptographicMaterialProviders'
+        if: matrix.library == 'AwsCryptographicMaterialProviders' && github.repository == 'aws/aws-cryptographic-material-providers-library'
         working-directory: ./${{ matrix.library }}/runtimes/go/TestsFromDafny-go
         run: |
           go test

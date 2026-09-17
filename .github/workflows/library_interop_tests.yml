@@ -46,6 +46,7 @@ jobs:
 
       - name: Configure AWS Credentials for Tests
         uses: aws-actions/configure-aws-credentials@v6
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         with:
           aws-region: us-west-2
           role-to-assume: arn:aws:iam::370957321024:role/GitHub-CI-MPL-Dafny-Role-us-west-2
@@ -146,10 +147,12 @@ jobs:
           fi
 
       - name: Create Encrypt Manifests
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         working-directory: ./${{ matrix.library }}
         run: make test_encrypt_vectors_${{ matrix.language }}
 
       - name: Upload Encrypt Manifest and keys.json files
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         uses: actions/upload-artifact@v7
         with:
           name: ${{matrix.os}}_vector_artifact_${{matrix.language}}${{ inputs.fuzz-testing && '_fuzz' || '' }}-${{ github.sha }}
@@ -174,6 +177,7 @@ jobs:
 
       - name: Configure AWS Credentials for Tests
         uses: aws-actions/configure-aws-credentials@v6
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         with:
           aws-region: us-west-2
           role-to-assume: arn:aws:iam::370957321024:role/GitHub-CI-MPL-Dafny-Role-us-west-2
@@ -261,51 +265,61 @@ jobs:
 
       # --- Download and decrypt vectors from each encrypting language ---
       - name: Download Encrypt Manifest Artifact Java
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         uses: actions/download-artifact@v8
         with:
           name: ${{matrix.os}}_vector_artifact_java${{ inputs.fuzz-testing && '_fuzz' || '' }}-${{ github.sha }}
           path: ./${{matrix.library}}/runtimes/${{matrix.decrypting_language}}
 
       - name: Decrypt Encrypt Manifest Java
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         working-directory: ./${{ matrix.library }}
         run: make test_decrypt_encrypt_vectors_${{matrix.decrypting_language}}
 
       - name: Download Encrypt Manifest Artifact Net
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         uses: actions/download-artifact@v8
         with:
           name: ${{matrix.os}}_vector_artifact_net${{ inputs.fuzz-testing && '_fuzz' || '' }}-${{ github.sha }}
           path: ./${{matrix.library}}/runtimes/${{matrix.decrypting_language}}
 
       - name: Decrypt Encrypt Manifest Net
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         working-directory: ./${{ matrix.library }}
         run: make test_decrypt_encrypt_vectors_${{matrix.decrypting_language}}
 
       - name: Download Encrypt Manifest Artifact Rust
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         uses: actions/download-artifact@v8
         with:
           name: ${{matrix.os}}_vector_artifact_rust${{ inputs.fuzz-testing && '_fuzz' || '' }}-${{ github.sha }}
           path: ./${{matrix.library}}/runtimes/${{matrix.decrypting_language}}
 
       - name: Decrypt Encrypt Manifest Rust
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         working-directory: ./${{ matrix.library }}
         run: make test_decrypt_encrypt_vectors_${{matrix.decrypting_language}}
 
       - name: Download Encrypt Manifest Artifact Python
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         uses: actions/download-artifact@v8
         with:
           name: ${{matrix.os}}_vector_artifact_python${{ inputs.fuzz-testing && '_fuzz' || '' }}-${{ github.sha }}
           path: ./${{matrix.library}}/runtimes/${{matrix.decrypting_language}}
 
       - name: Decrypt Encrypt Manifest Python
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         working-directory: ./${{ matrix.library }}
         run: make test_decrypt_encrypt_vectors_${{matrix.decrypting_language}}
 
       - name: Download Encrypt Manifest Artifact Go
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         uses: actions/download-artifact@v8
         with:
           name: ${{matrix.os}}_vector_artifact_go${{ inputs.fuzz-testing && '_fuzz' || '' }}-${{ github.sha }}
           path: ./${{matrix.library}}/runtimes/${{matrix.decrypting_language}}
 
       - name: Decrypt Encrypt Manifest Go
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         working-directory: ./${{ matrix.library }}
         run: make test_decrypt_encrypt_vectors_${{matrix.decrypting_language}}
