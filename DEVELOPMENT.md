@@ -1,7 +1,7 @@
 # Development Guide
 
 This document covers building the AWS Cryptographic Material Providers Library (MPL)
-**from source**. For the runtime dependencies needed to *use* a published build of the
+**from source**. For the runtime dependencies needed to _use_ a published build of the
 library (AWS SDKs, etc.), see the [README](README.md#optional-prerequisites) instead.
 
 This library is written in Dafny and transpiled into each target runtime (Java, .NET,
@@ -29,16 +29,16 @@ tools, because Smithy-Dafny's codegen dependencies are installed unconditionally
 regardless of which runtime you're building. As of this writing, building for **Java**
 requires:
 
-| Tool | Version | Why |
-|---|---|---|
-| .NET SDK | 9.0.x | Needed to run the Dafny CLI itself (`.github/actions/setup_dafny`) |
-| Dafny CLI | pinned in [`project.properties`](project.properties) (`dafnyVersion`) | Transpiles `.dfy` sources to each target language |
-| Java (Corretto) | 8 **and** 17 | 17 for Smithy-Dafny codegen tooling; Gradle's toolchain auto-detection needs both 8 and 17 present for various modules (e.g. `StandardLibrary` pins Java 8) |
-| Python | 3.11 + `black==25.1`, `docformatter==1.7.7`, `tox` | Formats/tests generated code when codegen runs (`.github/actions/install_smithy_dafny_codegen_dependencies`) |
-| Go | 1.24 + `goimports@v0.36.0` | Same codegen-dependencies action; only exercised if you regenerate Go bindings |
-| Node.js | any recent LTS | `make setup_prettier` — only needed if you regenerate smithy-dafny code (`make polymorph_java`) |
+| Tool            | Version                                                               | Why                                                                                                                                                         |
+| --------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| .NET SDK        | 9.0.x                                                                 | Needed to run the Dafny CLI itself (`.github/actions/setup_dafny`)                                                                                          |
+| Dafny CLI       | pinned in [`project.properties`](project.properties) (`dafnyVersion`) | Transpiles `.dfy` sources to each target language                                                                                                           |
+| Java (Corretto) | 8 **and** 17                                                          | 17 for Smithy-Dafny codegen tooling; Gradle's toolchain auto-detection needs both 8 and 17 present for various modules (e.g. `StandardLibrary` pins Java 8) |
+| Python          | 3.11 + `black==25.1`, `docformatter==1.7.7`, `tox`                    | Formats/tests generated code when codegen runs (`.github/actions/install_smithy_dafny_codegen_dependencies`)                                                |
+| Go              | 1.24 + `goimports@v0.36.0`                                            | Same codegen-dependencies action; only exercised if you regenerate Go bindings                                                                              |
+| Node.js         | any recent LTS                                                        | `make setup_prettier` — only needed if you regenerate smithy-dafny code (`make polymorph_java`)                                                             |
 
-**Rust is *not* required** for a Java build. `cargo`/`rustc` only appear in
+**Rust is _not_ required** for a Java build. `cargo`/`rustc` only appear in
 `smithy-dafny/SmithyDafnyMakefile.mk`'s Rust runtime build/test targets — the
 `mvn_local_deploy_polymorph_dependencies` step that touches `smithy-rs` only runs its
 Gradle wrapper (pure JVM), never the actual Rust compiler.
@@ -77,7 +77,7 @@ Containerfile) — the Dafny CLI version is pinned there, not auto-detected.
 ### Bare-metal alternative
 
 If you'd rather not containerize, install the tools in the table above directly
-(a JDK version manager like SDKMAN is recommended for getting Java 8 *and* 17
+(a JDK version manager like SDKMAN is recommended for getting Java 8 _and_ 17
 side-by-side) and skip straight to [3. Building](#3-building) below.
 
 ## 3. Building
