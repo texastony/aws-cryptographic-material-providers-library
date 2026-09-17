@@ -18,6 +18,11 @@ reported the issue. Please try to include as much information as you can. Detail
 - Any modifications you've made relevant to the bug
 - Anything unusual about your environment or deployment
 
+## Development Environment
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for how to build this library from source,
+including required submodules and toolchain.
+
 ## Contributing via Pull Requests
 
 Contributions via pull requests are much appreciated. Before sending us a pull request, please ensure that:

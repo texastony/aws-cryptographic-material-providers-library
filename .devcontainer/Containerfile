@@ -1,0 +1,96 @@
+# Dev container for the AWS Cryptographic Material Providers Library (MPL).
+#
+# Mirrors the build chain declared in .github/workflows/ for the Java target:
+#   - .github/actions/setup_dafny/action.yml            -> .NET 9 SDK + Dafny CLI
+#   - .github/actions/install_smithy_dafny_codegen_dependencies/action.yml
+#                                                         -> Java 17 (codegen), Python 3.11
+#                                                            + black/docformatter/tox, Go
+#                                                            1.24 + goimports
+#   - .github/workflows/library_java_build.yml           -> Java 8 + Java 17
+#   - Makefile (setup_prettier)                          -> Node/npm (only needed if
+#                                                            regenerating smithy-dafny code)
+#
+# Base image matches the ubuntu-22.04 GitHub Actions runner used by these workflows.
+# Rust is intentionally NOT installed: grep of smithy-dafny/SmithyDafnyMakefile.mk shows
+# cargo/rustc are only invoked by the Rust runtime build/test targets, which the Java-only
+# build path never calls.
+FROM ubuntu:22.04
+
+ARG DAFNY_VERSION=4.9.0
+ARG DOTNET_CHANNEL=9.0
+ARG GO_VERSION=1.24.0
+ARG NODE_MAJOR=20
+ARG USERNAME=dev
+ARG USER_UID=1000
+ARG USER_GID=1000
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates curl wget gnupg lsb-release software-properties-common \
+        git make unzip zip build-essential locales \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN locale-gen en_US.UTF-8
+ENV LANG=en_US.UTF-8
+
+# --- Java 8 + 17 (Amazon Corretto, matching setup-java "distribution: corretto" in CI) ---
+RUN wget -qO- https://apt.corretto.aws/corretto.key | gpg --dearmor -o /usr/share/keyrings/corretto-keyring.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/corretto-keyring.gpg] https://apt.corretto.aws stable main" \
+        > /etc/apt/sources.list.d/corretto.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        java-1.8.0-amazon-corretto-jdk java-17-amazon-corretto-jdk \
+    && rm -rf /var/lib/apt/lists/*
+# Both land under /usr/lib/jvm, where Gradle's Java toolchain auto-detection finds them;
+# build.gradle.kts files pin the exact version they need per-module (e.g. Java 8 for
+# StandardLibrary), so no manual JAVA_HOME juggling is required for gradle builds.
+ENV JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto
+ENV PATH=${JAVA_HOME}/bin:${PATH}
+
+# --- .NET 9 SDK (required to run the Dafny CLI itself; see setup_dafny action) ---
+RUN wget -q https://dot.net/v1/dotnet-install.sh -O /tmp/dotnet-install.sh \
+    && chmod +x /tmp/dotnet-install.sh \
+    && /tmp/dotnet-install.sh --channel ${DOTNET_CHANNEL} --install-dir /usr/share/dotnet \
+    && rm /tmp/dotnet-install.sh
+ENV DOTNET_ROOT=/usr/share/dotnet
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
+ENV PATH=${DOTNET_ROOT}:${PATH}
+
+# --- Dafny CLI, pinned to project.properties:dafnyVersion ---
+RUN wget -q "https://github.com/dafny-lang/dafny/releases/download/v${DAFNY_VERSION}/dafny-${DAFNY_VERSION}-x64-ubuntu-20.04.zip" -O /tmp/dafny.zip \
+    && unzip -q /tmp/dafny.zip -d /opt \
+    && rm /tmp/dafny.zip
+ENV PATH=/opt/dafny:${PATH}
+
+# --- Python 3.11 (deadsnakes PPA; Ubuntu 22.04 ships 3.10 by default) ---
+RUN add-apt-repository -y ppa:deadsnakes/ppa \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends python3.11 python3.11-venv python3.11-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11 \
+    && python3.11 -m pip install --no-cache-dir black==25.1 docformatter==1.7.7 tox
+RUN update-alternatives --install /usr/local/bin/python3 python3 /usr/bin/python3.11 1
+
+# --- Go 1.24 + goimports (matches install_smithy_dafny_codegen_dependencies) ---
+RUN wget -q "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" -O /tmp/go.tar.gz \
+    && tar -C /usr/local -xzf /tmp/go.tar.gz \
+    && rm /tmp/go.tar.gz
+ENV PATH=/usr/local/go/bin:${PATH}
+ENV GOPATH=/home/${USERNAME}/go
+ENV PATH=${GOPATH}/bin:${PATH}
+
+# --- Node (only needed for `make setup_prettier` when regenerating smithy-dafny code) ---
+RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Non-root user matching the host UID/GID, so files created via a bind mount aren't root-owned.
+RUN groupadd --gid ${USER_GID} ${USERNAME} \
+    && useradd --uid ${USER_UID} --gid ${USER_GID} -m -s /bin/bash ${USERNAME}
+
+USER ${USERNAME}
+RUN go install golang.org/x/tools/cmd/goimports@v0.36.0
+
+WORKDIR /workspace
+CMD ["/bin/bash"]
