@@ -55,6 +55,8 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: "1.24"
+          cache: true
+          cache-dependency-path: "**/go.sum"
 
       - name: Install Smithy-Dafny codegen dependencies
         uses: ./.github/actions/install_smithy_dafny_codegen_dependencies

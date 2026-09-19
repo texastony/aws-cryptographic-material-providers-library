@@ -34,6 +34,21 @@ jobs:
         with:
           node-version: 20
 
+      # No package-lock.json is committed (make setup_semantic_release does an ad hoc
+      # `npm i --no-save`), so there's no lockfile to hash a cache key against --
+      # mirror the same static-key + restore-keys approach the Maven cache in
+      # install_smithy_dafny_codegen_dependencies/action.yml already uses. Keyed
+      # distinctly from library_format.yml's npm cache since the two install
+      # unrelated dependency sets.
+      - name: Cache npm
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-semantic-release
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
       # Use AWS Secrets Manger GHA to retrieve CI Bot Creds
       - name: Get CI Bot Creds Secret
         if: github.repository == 'aws/aws-cryptographic-material-providers-library'

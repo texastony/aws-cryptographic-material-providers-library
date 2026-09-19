@@ -82,6 +82,7 @@ jobs:
         with:
           distribution: "corretto"
           java-version: 8
+          cache: "gradle"
 
       - name: Setup Java 17
         if: matrix.language == 'java'
@@ -89,6 +90,7 @@ jobs:
         with:
           distribution: "corretto"
           java-version: 17
+          cache: "gradle"
 
       - name: Setup Python
         if: ${{ inputs.fuzz-testing || matrix.language == 'python' }}
@@ -96,6 +98,8 @@ jobs:
         with:
           python-version: "3.11"
           architecture: x64
+          cache: "pip"
+          cache-dependency-path: "**/pyproject.toml"
       - name: Install Python deps
         if: matrix.language == 'python'
         run: |
@@ -112,12 +116,13 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: rustfmt
-          cache: false
       - name: Setup Go
         if: matrix.language == 'go'
         uses: actions/setup-go@v6
         with:
           go-version: "1.24"
+          cache: true
+          cache-dependency-path: "**/go.sum"
 
       - run: echo "TIMESTAMP=$(date -u +'%Y-%m-%d')" >> $GITHUB_ENV
 
@@ -213,6 +218,7 @@ jobs:
         with:
           distribution: "corretto"
           java-version: 8
+          cache: "gradle"
 
       - name: Setup Java 17
         if: matrix.decrypting_language == 'java'
@@ -220,6 +226,7 @@ jobs:
         with:
           distribution: "corretto"
           java-version: 17
+          cache: "gradle"
 
       - name: Setup Python
         if: matrix.decrypting_language == 'python'
@@ -227,6 +234,8 @@ jobs:
         with:
           python-version: "3.11"
           architecture: x64
+          cache: "pip"
+          cache-dependency-path: "**/pyproject.toml"
       - name: Install Python deps
         if: matrix.decrypting_language == 'python'
         run: |
@@ -239,13 +248,14 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: rustfmt
-          cache: false
 
       - name: Setup Go
         if: matrix.decrypting_language == 'go'
         uses: actions/setup-go@v6
         with:
           go-version: "1.24"
+          cache: true
+          cache-dependency-path: "**/go.sum"
 
       - run: echo "TIMESTAMP=$(date -u +'%Y-%m-%d')" >> $GITHUB_ENV
 

@@ -81,12 +81,14 @@ jobs:
         with:
           distribution: "corretto"
           java-version: 8
+          cache: "gradle"
 
       - name: Setup Java ${{ matrix.java-versions }}
         uses: actions/setup-java@v5
         with:
           distribution: "corretto"
           java-version: ${{ matrix.java-versions }}
+          cache: "gradle"
 
       - name: Test ${{ matrix.library }} on ${{ matrix.java-versions }}
         if: "!(matrix.library == 'ComAmazonawsKms' || matrix.library == 'ComAmazonawsDynamodb' || matrix.library == 'AwsCryptographicMaterialProviders') || github.repository == 'aws/aws-cryptographic-material-providers-library'"

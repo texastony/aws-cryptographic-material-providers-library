@@ -56,6 +56,8 @@ jobs:
         with:
           python-version: "3.11"
           architecture: x64
+          cache: "pip"
+          cache-dependency-path: "**/pyproject.toml"
 
       - name: Install Smithy-Dafny codegen dependencies
         uses: ./.github/actions/install_smithy_dafny_codegen_dependencies
