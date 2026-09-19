@@ -29,14 +29,19 @@ tools, because Smithy-Dafny's codegen dependencies are installed unconditionally
 regardless of which runtime you're building. As of this writing, building for **Java**
 requires:
 
-| Tool            | Version                                                               | Why                                                                                                                                                         |
-| --------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| .NET SDK        | 9.0.x                                                                 | Needed to run the Dafny CLI itself (`.github/actions/setup_dafny`)                                                                                          |
-| Dafny CLI       | pinned in [`project.properties`](project.properties) (`dafnyVersion`) | Transpiles `.dfy` sources to each target language                                                                                                           |
-| Java (Corretto) | 8 **and** 17                                                          | 17 for Smithy-Dafny codegen tooling; Gradle's toolchain auto-detection needs both 8 and 17 present for various modules (e.g. `StandardLibrary` pins Java 8) |
-| Python          | 3.11 + `black==25.1`, `docformatter==1.7.7`, `tox`                    | Formats/tests generated code when codegen runs (`.github/actions/install_smithy_dafny_codegen_dependencies`)                                                |
-| Go              | 1.24 + `goimports@v0.36.0`                                            | Same codegen-dependencies action; only exercised if you regenerate Go bindings                                                                              |
-| Node.js         | any recent LTS                                                        | `make setup_prettier` — only needed if you regenerate smithy-dafny code (`make polymorph_java`)                                                             |
+| Tool            | Pinned by                                                                                                                                               | Why                                                                                                                                                         |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| .NET SDK        | `.github/actions/setup_dafny/action.yml` (`dotnet-version`)                                                                                             | Needed to run the Dafny CLI itself                                                                                                                          |
+| Dafny CLI       | [`project.properties`](project.properties) (`dafnyVersion`)                                                                                             | Transpiles `.dfy` sources to each target language                                                                                                           |
+| Java (Corretto) | 8: `.github/workflows/library_java_build.yml` ("Setup Java 8"). 17: `.github/actions/install_smithy_dafny_codegen_dependencies/action.yml`              | 17 for Smithy-Dafny codegen tooling; Gradle's toolchain auto-detection needs both 8 and 17 present for various modules (e.g. `StandardLibrary` pins Java 8) |
+| Python          | `.github/actions/install_smithy_dafny_codegen_dependencies/action.yml` (`python-version` input's default) + `black==25.1`, `docformatter==1.7.7`, `tox` | Formats/tests generated code when codegen runs                                                                                                              |
+| Go              | same file (`go-version`) + `goimports@v0.36.0`                                                                                                          | Same codegen-dependencies action; only exercised if you regenerate Go bindings                                                                              |
+| Node.js         | no canonical pin exists for this in the repo — any recent LTS works                                                                                     | `make setup_prettier` — only needed if you regenerate smithy-dafny code (`make polymorph_java`)                                                             |
+
+None of these version numbers are duplicated here as literals — `.devcontainer/versions.sh`
+is the single script that resolves every row above from the files cited, by parsing them
+directly, so this table can't go stale even if nobody remembers to update it. Run it
+yourself (`.devcontainer/versions.sh`) to print the exact current numbers.
 
 **Rust is _not_ required** for a Java build. `cargo`/`rustc` only appear in
 `smithy-dafny/SmithyDafnyMakefile.mk`'s Rust runtime build/test targets — the
@@ -55,9 +60,20 @@ that bind-mounts the repo and persists Gradle/Maven/NuGet caches across runs in 
 volumes. Works with Docker or Podman (rootless podman needs no `sudo`).
 
 ```sh
-# Build the image once (or after editing .devcontainer/Containerfile)
+# Resolve toolchain versions fresh from this repo's canonical sources (see
+# .devcontainer/versions.sh), then build the image. Re-run this any time you've bumped
+# project.properties or one of the workflow files versions.sh reads -- there's no
+# separate version to remember to update by hand.
+eval "$(.devcontainer/versions.sh)"
 podman build -t mpl-dev:latest -f .devcontainer/Containerfile \
-  --build-arg USER_UID=$(id -u) --build-arg USER_GID=$(id -g) .
+  --build-arg USER_UID=$(id -u) --build-arg USER_GID=$(id -g) \
+  --build-arg DAFNY_VERSION="$DAFNY_VERSION" \
+  --build-arg DOTNET_CHANNEL="$DOTNET_CHANNEL" \
+  --build-arg GO_VERSION="$GO_VERSION" \
+  --build-arg JAVA8_VERSION="$JAVA8_VERSION" \
+  --build-arg JAVA17_VERSION="$JAVA17_VERSION" \
+  --build-arg PYTHON_VERSION="$PYTHON_VERSION" \
+  .
 
 # Create the cache volumes once
 podman volume create mpl-gradle-cache
@@ -69,10 +85,6 @@ podman volume create mpl-dotnet-cache
 ```
 
 (Swap `podman` for `docker` in the build command if you're using Docker instead — `run.sh` itself just needs `podman` on `PATH`, or edit it to call `docker`.)
-
-If you bump `dafnyVersion` in `project.properties`, rebuild the image with
-`--build-arg DAFNY_VERSION=<new version>` (or edit the `ARG` default in the
-Containerfile) — the Dafny CLI version is pinned there, not auto-detected.
 
 ### Bare-metal alternative
 
