@@ -32,7 +32,9 @@ jobs:
             StandardLibrary,
           ]
         os: [macos-latest-large]
-    runs-on: ${{ matrix.os }}
+    # macos-latest-large is a paid/large-runner label only available to the upstream
+    # org; forks fall back to the free macos-latest runner instead.
+    runs-on: ${{ github.repository == 'aws/aws-cryptographic-material-providers-library' && matrix.os || 'macos-latest' }}
     defaults:
       run:
         shell: bash

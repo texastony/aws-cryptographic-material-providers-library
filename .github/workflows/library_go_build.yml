@@ -34,6 +34,7 @@ jobs:
           git config --global core.longpaths true
 
       - name: Configure AWS Credentials
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: us-west-2
@@ -54,6 +55,8 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: "1.24"
+          cache: true
+          cache-dependency-path: "**/go.sum"
 
       - name: Install Smithy-Dafny codegen dependencies
         uses: ./.github/actions/install_smithy_dafny_codegen_dependencies

@@ -94,6 +94,17 @@ jobs:
         run: |
           git config --global core.longpaths true
       - uses: actions/checkout@v6
+      # No package-lock.json is committed (make setup_prettier does an ad hoc
+      # `npm i --no-save`), so there's no lockfile to hash a cache key against --
+      # mirror the same static-key + restore-keys approach the Maven cache in
+      # install_smithy_dafny_codegen_dependencies/action.yml already uses.
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-prettier
+          restore-keys: |
+            ${{ runner.os }}-npm-
       - name: Check format of Java, yaml, and md
         shell: bash
         run: |

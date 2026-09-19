@@ -54,6 +54,7 @@ jobs:
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v6
+        if: (matrix.library == 'ComAmazonawsKms' || matrix.library == 'ComAmazonawsDynamodb' || matrix.library == 'AwsCryptographicMaterialProviders' || matrix.library == 'TestVectorsAwsCryptographicMaterialProviders') && github.repository == 'aws/aws-cryptographic-material-providers-library'
         with:
           aws-region: us-west-2
           role-to-assume: arn:aws:iam::370957321024:role/GitHub-CI-MPL-Dafny-Role-us-west-2
@@ -90,13 +91,14 @@ jobs:
         run: make setup_net
 
       - name: Test ${{ matrix.library }} .NET net6.0
+        if: "!(matrix.library == 'ComAmazonawsKms' || matrix.library == 'ComAmazonawsDynamodb' || matrix.library == 'AwsCryptographicMaterialProviders' || matrix.library == 'TestVectorsAwsCryptographicMaterialProviders') || github.repository == 'aws/aws-cryptographic-material-providers-library'"
         working-directory: ./${{ matrix.library }}
         shell: bash
         run: |
           dotnet run --project runtimes/net/tests/ --framework net6.0
 
       - name: Test Cache Thread Safety net6.0
-        if: matrix.library == 'AwsCryptographicMaterialProviders'
+        if: matrix.library == 'AwsCryptographicMaterialProviders' && github.repository == 'aws/aws-cryptographic-material-providers-library'
         working-directory: ./${{ matrix.library }}
         shell: bash
         run: |
@@ -106,7 +108,7 @@ jobs:
               --framework net6.0
 
       - name: Test Cache Thread Safety .NET Framework net48
-        if: matrix.os == 'windows-latest' && matrix.library == 'AwsCryptographicMaterialProviders'
+        if: matrix.os == 'windows-latest' && matrix.library == 'AwsCryptographicMaterialProviders' && github.repository == 'aws/aws-cryptographic-material-providers-library'
         working-directory: ./${{ matrix.library }}
         shell: bash
         run: |

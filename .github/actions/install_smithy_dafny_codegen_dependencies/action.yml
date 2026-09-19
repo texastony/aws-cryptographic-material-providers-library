@@ -32,8 +32,13 @@ runs:
       uses: actions/cache@v4
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-maven-smithy-dafny
+        # Hash-keyed on smithy-dafny's own build files (not a static key) so the cache
+        # actually invalidates when its dependency set changes, e.g. a submodule bump,
+        # rather than silently serving a stale ~/.m2 forever. restore-keys still gives a
+        # fast partial-hit fallback while the exact-match entry warms up.
+        key: ${{ runner.os }}-maven-smithy-dafny-${{ hashFiles(format('{0}smithy-dafny/**/*.gradle*', inputs.mpl-submodule-path), format('{0}smithy-dafny/**/gradle-wrapper.properties', inputs.mpl-submodule-path)) }}
         restore-keys: |
+          ${{ runner.os }}-maven-smithy-dafny-
           ${{ runner.os }}-maven-
 
     - name: Install smithy-dafny-codegen dependencies locally
@@ -53,6 +58,7 @@ runs:
           python-version: ${{ inputs.python-version || matrix.python-version }}
           architecture: x64
           cache: "pip"
+          cache-dependency-path: "**/pyproject.toml"
         attempt_limit: 3
         attempt_delay: 30000
     - uses: nick-fields/retry@v3
@@ -73,7 +79,11 @@ runs:
         action: actions/setup-go@v6
         with: |
           go-version: "1.24"
-          cache: false # No go.mod at repo root; project-level caching handled in test workflows
+          # There's no go.mod at repo root, but every library has its own
+          # runtimes/go/*/go.sum, so an explicit cache-dependency-path glob finds
+          # them without needing a root-level module.
+          cache: true
+          cache-dependency-path: "**/go.sum"
         attempt_limit: 3
         attempt_delay: 30000
 

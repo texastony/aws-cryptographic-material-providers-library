@@ -56,6 +56,7 @@ jobs:
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v6
+        if: (matrix.library == 'ComAmazonawsKms' || matrix.library == 'ComAmazonawsDynamodb' || matrix.library == 'AwsCryptographicMaterialProviders' || matrix.library == 'TestVectorsAwsCryptographicMaterialProviders') && github.repository == 'aws/aws-cryptographic-material-providers-library'
         with:
           aws-region: us-west-2
           role-to-assume: arn:aws:iam::370957321024:role/GitHub-CI-MPL-Dafny-Role-us-west-2
@@ -66,13 +67,14 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: rustfmt
-          cache: false
 
       # Go is needed for aws-lc-FIPS
       - name: Install Go
         uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
+          cache: true
+          cache-dependency-path: "**/go.sum"
 
       - run: echo "TIMESTAMP=$(date -u +'%Y-%m-%d')" >> $GITHUB_ENV
 
@@ -83,6 +85,7 @@ jobs:
           path: .
 
       - name: Test ${{ matrix.library }} Rust
+        if: "!(matrix.library == 'ComAmazonawsKms' || matrix.library == 'ComAmazonawsDynamodb' || matrix.library == 'AwsCryptographicMaterialProviders' || matrix.library == 'TestVectorsAwsCryptographicMaterialProviders') || github.repository == 'aws/aws-cryptographic-material-providers-library'"
         shell: bash
         working-directory: ./${{ matrix.library }}/runtimes/rust
         run: |
@@ -90,7 +93,7 @@ jobs:
           cargo test -- --nocapture
 
       - name: Test ${{ matrix.library }} Rust Fips
-        if: matrix.library == 'AwsCryptographyPrimitives' || matrix.library == 'AwsCryptographicMaterialProviders' || matrix.library == 'TestVectorsAwsCryptographicMaterialProviders'
+        if: (matrix.library == 'AwsCryptographyPrimitives' || matrix.library == 'AwsCryptographicMaterialProviders' || matrix.library == 'TestVectorsAwsCryptographicMaterialProviders') && (matrix.library == 'AwsCryptographyPrimitives' || github.repository == 'aws/aws-cryptographic-material-providers-library')
         shell: bash
         working-directory: ./${{ matrix.library }}/runtimes/rust
         run: |

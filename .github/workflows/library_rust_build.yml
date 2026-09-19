@@ -39,6 +39,7 @@ jobs:
           git submodule update --init --recursive smithy-dafny
 
       - name: Configure AWS Credentials
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: us-west-2
@@ -50,7 +51,6 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: rustfmt
-          cache: false
 
       - name: Setup Dafny
         uses: ./.github/actions/setup_dafny
@@ -62,6 +62,8 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: ">=1.18"
+          cache: true
+          cache-dependency-path: "**/go.sum"
 
       - name: Install Smithy-Dafny codegen dependencies
         uses: ./.github/actions/install_smithy_dafny_codegen_dependencies

@@ -1,0 +1,136 @@
+# Dev container for the AWS Cryptographic Material Providers Library (MPL).
+#
+# Mirrors the build chain declared in .github/workflows/ for the Java target:
+#   - .github/actions/setup_dafny/action.yml            -> .NET SDK + Dafny CLI
+#   - .github/actions/install_smithy_dafny_codegen_dependencies/action.yml
+#                                                         -> Java (codegen), Python
+#                                                            + black/docformatter/tox, Go
+#                                                            + goimports
+#   - .github/workflows/library_java_build.yml           -> Java (build)
+#   - Makefile (setup_prettier)                          -> Node/npm (only needed if
+#                                                            regenerating smithy-dafny code)
+#
+# All version numbers are resolved by .devcontainer/versions.sh from those same files at
+# build time -- see the ARG block below and DEVELOPMENT.md's build command. None of them
+# are hardcoded here, so there's nothing in this file to keep in sync by hand.
+#
+# Base image matches the ubuntu-22.04 GitHub Actions runner used by these workflows.
+# Rust is intentionally NOT installed: grep of smithy-dafny/SmithyDafnyMakefile.mk shows
+# cargo/rustc are only invoked by the Rust runtime build/test targets, which the Java-only
+# build path never calls.
+FROM ubuntu:22.04
+
+# DAFNY_VERSION, DOTNET_CHANNEL, GO_VERSION, JAVA8_VERSION, JAVA17_VERSION, and
+# PYTHON_VERSION have no defaults here on purpose -- they must be passed in via
+# --build-arg, resolved fresh from this repo's own canonical sources by
+# .devcontainer/versions.sh (see DEVELOPMENT.md for the build command). That script is
+# the single source of truth for these; the RUN guards right below fail the build
+# loudly if one wasn't actually passed, instead of silently building with an empty
+# value.
+ARG DAFNY_VERSION
+ARG DOTNET_CHANNEL
+ARG GO_VERSION
+ARG JAVA8_VERSION
+ARG JAVA17_VERSION
+ARG PYTHON_VERSION
+# NODE_MAJOR is the one exception with a plain literal default: there is no canonical
+# source for it anywhere in this repo (the only Node version pins that exist,
+# semantic_release.yml and sem_ver.yml, are for unrelated release tooling, not the
+# MPL build/codegen chain this container mirrors) -- see .devcontainer/versions.sh.
+ARG NODE_MAJOR=20
+ARG USERNAME=dev
+ARG USER_UID=1000
+ARG USER_GID=1000
+
+RUN : "${DAFNY_VERSION:?DAFNY_VERSION build-arg not set - run: eval \"\$(.devcontainer/versions.sh)\" first}"
+RUN : "${DOTNET_CHANNEL:?DOTNET_CHANNEL build-arg not set - run: eval \"\$(.devcontainer/versions.sh)\" first}"
+RUN : "${GO_VERSION:?GO_VERSION build-arg not set - run: eval \"\$(.devcontainer/versions.sh)\" first}"
+RUN : "${JAVA8_VERSION:?JAVA8_VERSION build-arg not set - run: eval \"\$(.devcontainer/versions.sh)\" first}"
+RUN : "${JAVA17_VERSION:?JAVA17_VERSION build-arg not set - run: eval \"\$(.devcontainer/versions.sh)\" first}"
+RUN : "${PYTHON_VERSION:?PYTHON_VERSION build-arg not set - run: eval \"\$(.devcontainer/versions.sh)\" first}"
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates curl wget gnupg lsb-release software-properties-common \
+        git make unzip zip build-essential locales \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN locale-gen en_US.UTF-8
+ENV LANG=en_US.UTF-8
+
+# --- Java 8 + 17 (Amazon Corretto, matching setup-java "distribution: corretto" in CI) ---
+# Corretto's apt package naming is quirky for 8 specifically: it's
+# java-1.8.0-amazon-corretto-jdk, not java-8-amazon-corretto-jdk, while every later
+# major (11, 17, 21, ...) follows the obvious java-${N}-amazon-corretto-jdk pattern.
+# That's a vendor packaging convention, not project-versioned info, so it's a fixed
+# translation here rather than something to source from JAVA8_VERSION.
+RUN JAVA8_PKG_VERSION=1.8.0; \
+    if [ "$JAVA8_VERSION" != "8" ]; then JAVA8_PKG_VERSION="$JAVA8_VERSION"; fi; \
+    wget -qO- https://apt.corretto.aws/corretto.key | gpg --dearmor -o /usr/share/keyrings/corretto-keyring.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/corretto-keyring.gpg] https://apt.corretto.aws stable main" \
+        > /etc/apt/sources.list.d/corretto.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        java-${JAVA8_PKG_VERSION}-amazon-corretto-jdk java-${JAVA17_VERSION}-amazon-corretto-jdk \
+    && rm -rf /var/lib/apt/lists/*
+# Both land under /usr/lib/jvm, where Gradle's Java toolchain auto-detection finds them;
+# build.gradle.kts files pin the exact version they need per-module (e.g. Java 8 for
+# StandardLibrary), so no manual JAVA_HOME juggling is required for gradle builds.
+ENV JAVA_HOME=/usr/lib/jvm/java-${JAVA17_VERSION}-amazon-corretto
+ENV PATH=${JAVA_HOME}/bin:${PATH}
+
+# --- .NET 9 SDK (required to run the Dafny CLI itself; see setup_dafny action) ---
+RUN wget -q https://dot.net/v1/dotnet-install.sh -O /tmp/dotnet-install.sh \
+    && chmod +x /tmp/dotnet-install.sh \
+    && /tmp/dotnet-install.sh --channel ${DOTNET_CHANNEL} --install-dir /usr/share/dotnet \
+    && rm /tmp/dotnet-install.sh
+ENV DOTNET_ROOT=/usr/share/dotnet
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
+ENV PATH=${DOTNET_ROOT}:${PATH}
+
+# --- Dafny CLI, pinned to project.properties:dafnyVersion ---
+RUN wget -q "https://github.com/dafny-lang/dafny/releases/download/v${DAFNY_VERSION}/dafny-${DAFNY_VERSION}-x64-ubuntu-20.04.zip" -O /tmp/dafny.zip \
+    && unzip -q /tmp/dafny.zip -d /opt \
+    && rm /tmp/dafny.zip
+ENV PATH=/opt/dafny:${PATH}
+
+# --- Python PYTHON_VERSION (deadsnakes PPA; Ubuntu 22.04 ships 3.10 by default) ---
+RUN add-apt-repository -y ppa:deadsnakes/ppa \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        python${PYTHON_VERSION} python${PYTHON_VERSION}-venv python${PYTHON_VERSION}-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -sS https://bootstrap.pypa.io/get-pip.py | python${PYTHON_VERSION} \
+    && python${PYTHON_VERSION} -m pip install --no-cache-dir black==25.1 docformatter==1.7.7 tox
+RUN update-alternatives --install /usr/local/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1
+
+# --- Go GO_VERSION (minor only, e.g. "1.24") + goimports (matches
+# install_smithy_dafny_codegen_dependencies, which itself only pins a floating minor,
+# not an exact patch -- go.dev has no "latest patch of this minor" download URL, but
+# every Go minor series' first release is always patch .0 (a real, permanent release,
+# e.g. go1.24.0), so appending .0 is a safe way to get a guaranteed-valid download
+# without hardcoding a patch digit or scraping go.dev's release JSON at build time.
+# Go here is only used for `goimports`, not for running the MPL Go runtime's own
+# tests, so missing later bugfix patches doesn't matter for this container's purpose. ---
+RUN wget -q "https://go.dev/dl/go${GO_VERSION}.0.linux-amd64.tar.gz" -O /tmp/go.tar.gz \
+    && tar -C /usr/local -xzf /tmp/go.tar.gz \
+    && rm /tmp/go.tar.gz
+ENV PATH=/usr/local/go/bin:${PATH}
+ENV GOPATH=/home/${USERNAME}/go
+ENV PATH=${GOPATH}/bin:${PATH}
+
+# --- Node (only needed for `make setup_prettier` when regenerating smithy-dafny code) ---
+RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Non-root user matching the host UID/GID, so files created via a bind mount aren't root-owned.
+RUN groupadd --gid ${USER_GID} ${USERNAME} \
+    && useradd --uid ${USER_UID} --gid ${USER_GID} -m -s /bin/bash ${USERNAME}
+
+USER ${USERNAME}
+RUN go install golang.org/x/tools/cmd/goimports@v0.36.0
+
+WORKDIR /workspace
+CMD ["/bin/bash"]

@@ -38,6 +38,7 @@ jobs:
           git config --global core.longpaths true
 
       - name: Configure AWS Credentials
+        if: github.repository == 'aws/aws-cryptographic-material-providers-library'
         uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: us-west-2
@@ -72,18 +73,22 @@ jobs:
         with:
           distribution: "corretto"
           java-version: 8
+          cache: "gradle"
 
       - name: Setup Java 17
         uses: actions/setup-java@v5
         with:
           distribution: "corretto"
           java-version: 17
+          cache: "gradle"
 
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           architecture: x64
+          cache: "pip"
+          cache-dependency-path: "**/pyproject.toml"
       - run: |
           python -m pip install --upgrade pip
           pip install --upgrade tox
@@ -93,12 +98,13 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: rustfmt
-          cache: false
 
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
           go-version: "1.24"
+          cache: true
+          cache-dependency-path: "**/go.sum"
 
       - name: Install Go imports
         run: |
